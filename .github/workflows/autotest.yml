@@ -1,42 +1,36 @@
-name: autotests
+name: go vet test
 
 on:
   pull_request:
   push:
 
 jobs:
-
-  autotest:
+  statictest:
     runs-on: ubuntu-latest
-    container: golang:1.22
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Download autotests binaries
+      - name: Download statictest binary
         uses: robinraju/release-downloader@v1.8
         with:
           repository: Yandex-Practicum/go-autotests
           latest: true
-          fileName: "*"
+          fileName: statictest
           out-file-path: .tools
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup autotest binary
         run: |
-          chmod -R +x $GITHUB_WORKSPACE/.tools
-          mv $GITHUB_WORKSPACE/.tools/devopsmastertest /usr/local/bin/devopsmastertest
+          mkdir -p $GITHUB_WORKSPACE/.tools
+          chmod +x $GITHUB_WORKSPACE/.tools/statictest
+          sudo mv $GITHUB_WORKSPACE/.tools/statictest /usr/local/bin/statictest
 
-      - name: Build script binary
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Run statictest
         run: |
-          go build -buildvcs=false -o srvmonitor
-
-      - name: Run autotest suite
-        run: |
-          echo -n "127.0.0.1 srv.msk01.gigacorp.local" | tee -a /etc/hosts > /dev/null
-          devopsmastertest \
-              -test.v \
-              -test.run=^TestLesson01$ \
-              -binary-path=./srvmonitor
-
+          go vet -vettool=$(which statictest) ./...
